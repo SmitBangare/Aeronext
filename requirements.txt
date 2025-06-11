@@ -6,6 +6,4 @@ numpy==2.3.0
 pandas==2.3.0
 plotly==5.18.0
 scikit-learn==1.4.0
---only-binary :all:
-scikit-surprise==1.1.1
 textblob==0.17.1 
