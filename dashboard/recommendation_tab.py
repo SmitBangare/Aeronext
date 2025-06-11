@@ -15,7 +15,7 @@ import os
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from models.recommender import AirportRecommender
+from models.recommender import AirportRecommender, DomainRecommender
 from config.airport_profiles import AIRPORT_PROFILES
 from utils.plot_utils import create_recommendation_chart
 
@@ -46,6 +46,34 @@ def render_recommendation_tab():
     
     # Input section
     st.subheader("🎯 Passenger Context")
+    
+    # Domain selection first
+    st.markdown("**Select Domain**")
+    domain_col1, domain_col2, domain_col3 = st.columns(3)
+    
+    with domain_col1:
+        retail_selected = st.button("🛍️ Retail", use_container_width=True)
+    with domain_col2:
+        fnb_selected = st.button("🍽️ Food & Beverage", use_container_width=True)
+    with domain_col3:
+        lounge_selected = st.button("🏢 Lounge Services", use_container_width=True)
+    
+    # Set default domain or use selected
+    if 'selected_domain' not in st.session_state:
+        st.session_state.selected_domain = 'retail'
+    
+    if retail_selected:
+        st.session_state.selected_domain = 'retail'
+    elif fnb_selected:
+        st.session_state.selected_domain = 'f&b'
+    elif lounge_selected:
+        st.session_state.selected_domain = 'lounge'
+    
+    selected_domain = st.session_state.selected_domain
+    
+    # Display selected domain
+    domain_names = {'retail': 'Retail Products', 'f&b': 'Food & Beverage', 'lounge': 'Lounge Services'}
+    st.info(f"**Selected Domain:** {domain_names[selected_domain]}")
     
     col1, col2, col3 = st.columns(3)
     
@@ -95,29 +123,67 @@ def render_recommendation_tab():
         
         with st.spinner("Analyzing passenger profile and generating recommendations..."):
             
-            # Get recommendations from the model
-            recommendations = recommender.get_user_recommendations(
-                user_id=passenger_id,
-                airport_code=selected_airport,
-                passenger_segment=passenger_segment,
-                n_recommendations=5
-            )
+            # Get domain-specific recommendations from the model
+            if hasattr(recommender, 'recommend'):
+                # Use new domain-aware recommender
+                recommendations = recommender.recommend(
+                    user_id=passenger_id,
+                    domain=selected_domain,
+                    n=5
+                )
+            else:
+                # Fallback to legacy method
+                recommendations = recommender.get_user_recommendations(
+                    user_id=passenger_id,
+                    airport_code=selected_airport,
+                    passenger_segment=passenger_segment,
+                    n_recommendations=5
+                )
         
-        # Display recommendations
-        st.subheader("💎 Personalized Recommendations")
+    # Initialize variables outside the button context
+    recommendations = []
+    products_df = pd.DataFrame()
+    
+    # Generate recommendations button
+    if st.button("🚀 Generate Recommendations", type="primary"):
         
-        if recommendations:
-            # Load product data for detailed display
-            try:
-                products_df = pd.read_csv('data/products.csv')
-            except:
-                # Fallback product data
-                products_df = pd.DataFrame({
-                    'product_id': [r['product_id'] for r in recommendations],
-                    'name': [f"Product {r['product_id']}" for r in recommendations],
-                    'category': ['Food & Beverage'] * len(recommendations),
-                    'base_price': [100 + i * 50 for i in range(len(recommendations))],
-                    'description': [f"Description for {r['product_id']}" for r in recommendations]
+        # Simulate passenger ID
+        passenger_id = f"SIM_{selected_airport}_{passenger_segment[:3].upper()}_{int(datetime.now().timestamp()) % 10000}"
+        
+        with st.spinner("Analyzing passenger profile and generating recommendations..."):
+            
+            # Get domain-specific recommendations from the model
+            if hasattr(recommender, 'recommend'):
+                # Use new domain-aware recommender
+                recommendations = recommender.recommend(
+                    user_id=passenger_id,
+                    domain=selected_domain,
+                    n=5
+                )
+            else:
+                # Fallback to legacy method
+                recommendations = recommender.get_user_recommendations(
+                    user_id=passenger_id,
+                    airport_code=selected_airport,
+                    passenger_segment=passenger_segment,
+                    n_recommendations=5
+                )
+    
+    # Display recommendations (always shown, even if empty)
+    st.subheader("💎 Personalized Recommendations")
+    
+    if recommendations:
+        # Load product data for detailed display
+        try:
+            products_df = pd.read_csv('data/products.csv')
+        except Exception:
+            # Fallback product data
+            products_df = pd.DataFrame({
+                'product_id': [r['product_id'] for r in recommendations],
+                'name': [f"Product {r['product_id']}" for r in recommendations],
+                'category': ['Food & Beverage'] * len(recommendations),
+                'base_price': [100 + i * 50 for i in range(len(recommendations))],
+                'description': [f"Description for {r['product_id']}" for r in recommendations]
                 })
             
             # Create recommendation cards
@@ -206,7 +272,7 @@ def render_recommendation_tab():
             # Conversion impact estimation
             st.subheader("📊 Expected Impact")
             
-            conversion_lift = recommender.calculate_conversion_lift(recommendations)
+            conversion_metrics = recommender.calculate_conversion_lift(recommendations)
             baseline_conversion = 0.15  # 15% baseline conversion rate
             
             impact_col1, impact_col2, impact_col3 = st.columns(3)
@@ -214,14 +280,14 @@ def render_recommendation_tab():
             with impact_col1:
                 st.metric(
                     "Conversion Lift",
-                    f"+{conversion_lift:.1%}",
+                    f"+{conversion_metrics.get('conversion_lift', 0):.1f}%",
                     f"vs baseline {baseline_conversion:.1%}"
                 )
             
             with impact_col2:
                 expected_revenue_per_pax = sum([
                     products_df[products_df['product_id'] == rec['product_id']].iloc[0].get('base_price', 100) 
-                    * (baseline_conversion + conversion_lift)
+                    * (baseline_conversion + conversion_metrics.get('conversion_lift', 0) / 100)
                     for rec in recommendations
                     if not products_df[products_df['product_id'] == rec['product_id']].empty
                 ])

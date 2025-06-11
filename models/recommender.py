@@ -1,6 +1,6 @@
 """
-Collaborative filtering recommendation engine for personalized retail offers.
-Uses sklearn-based matrix factorization and similarity-based recommendations.
+Domain-aware collaborative filtering recommendation engine for personalized retail offers.
+Uses sklearn-based matrix factorization with domain filtering (retail, f&b, lounge).
 """
 
 import pandas as pd
@@ -11,6 +11,7 @@ from collections import defaultdict
 from sklearn.decomposition import NMF
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
+from typing import Dict, List, Tuple, Optional
 import sys
 
 # Add project root to path
@@ -18,111 +19,97 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.airport_profiles import AIRPORT_PROFILES
 
-class AirportRecommender:
-    def __init__(self):
-        self.model = None
+class DomainRecommender:
+    def __init__(self, no_components: int = 32, learning_rate: float = 0.05, loss: str = 'warp'):
+        """Initialize domain-aware recommender system"""
+        self.model = NMF(n_components=no_components, random_state=42)
         self.user_item_matrix = None
         self.products_df = None
         self.scaler = MinMaxScaler()
         self.item_similarity = None
-        self.n_components = 10
+        self.user_mapping = {}
+        self.item_mapping = {}
+        self.reverse_item_mapping = {}
+        self.domains = ['retail', 'f&b', 'lounge']
         
-    def load_data(self):
-        """Load transaction and product data"""
-        try:
-            # Load transaction data
-            transactions_df = pd.read_csv('data/transactions.csv')
-            products_df = pd.read_csv('data/products.csv')
-            
-            # Create user-item matrix with implicit ratings
-            # Use transaction frequency and amount as rating signal
-            user_item = transactions_df.groupby(['passenger_id', 'product_id']).agg({
-                'quantity': 'sum',
-                'total_amount': 'sum'
-            }).reset_index()
-            
-            # Normalize ratings to 1-5 scale
-            user_item['rating'] = np.clip(
-                (user_item['quantity'] * user_item['total_amount'] / 1000), 1, 5
+    def fit(self, interactions_df: pd.DataFrame, products_df: pd.DataFrame):
+        """
+        Train the domain-aware recommendation model
+        
+        Args:
+            interactions_df: DataFrame with columns [user_id, item_id, rating]
+            products_df: DataFrame with columns [item_id, domain, name, price, category]
+        """
+        # Store products with domain information
+        self.products_df = products_df.copy()
+        
+        # Ensure domain column exists and normalize values
+        if 'domain' not in products_df.columns:
+            # Map categories to domains
+            domain_mapping = {
+                'Food & Beverage': 'f&b',
+                'Coffee': 'f&b',
+                'Restaurant': 'f&b',
+                'Snacks': 'f&b',
+                'Retail': 'retail',
+                'Electronics': 'retail',
+                'Books': 'retail',
+                'Souvenirs': 'retail',
+                'Lounge': 'lounge',
+                'Premium Lounge': 'lounge'
+            }
+            self.products_df['domain'] = products_df['category'].map(
+                lambda x: domain_mapping.get(x, 'retail')
             )
-            
-            self.products_df = products_df
-            return user_item[['passenger_id', 'product_id', 'rating']]
-            
-        except Exception as e:
-            print(f"Error loading data: {e}")
-            return self._generate_sample_data()
-    
-    def _generate_sample_data(self):
-        """Generate sample data if files don't exist"""
-        np.random.seed(42)
-        
-        # Generate sample transactions
-        passengers = [f'P{i:04d}' for i in range(1, 501)]
-        products = [f'PROD_{i:03d}' for i in range(1, 51)]
-        
-        data = []
-        for passenger in passengers:
-            # Each passenger buys 1-5 products
-            n_purchases = np.random.randint(1, 6)
-            purchased_products = np.random.choice(products, n_purchases, replace=False)
-            
-            for product in purchased_products:
-                rating = np.random.uniform(1, 5)
-                data.append({
-                    'passenger_id': passenger,
-                    'product_id': product,
-                    'rating': rating
-                })
-        
-        # Generate sample products
-        categories = ['Food & Beverage', 'Retail', 'Electronics', 'Books', 'Souvenirs']
-        self.products_df = pd.DataFrame({
-            'product_id': products,
-            'name': [f'Product {i}' for i in range(1, 51)],
-            'category': np.random.choice(categories, len(products)),
-            'price': np.random.uniform(50, 500, len(products))
-        })
-        
-        return pd.DataFrame(data)
-    
-    def train_model(self):
-        """Train the recommendation model"""
-        # Load data
-        ratings_df = self.load_data()
         
         # Create user-item matrix
-        self.user_item_matrix = ratings_df.pivot(
-            index='passenger_id', 
-            columns='product_id', 
+        self.user_item_matrix = interactions_df.pivot(
+            index='user_id', 
+            columns='item_id', 
             values='rating'
         ).fillna(0)
         
+        # Create mappings
+        self.user_mapping = {user: idx for idx, user in enumerate(self.user_item_matrix.index)}
+        self.item_mapping = {item: idx for idx, item in enumerate(self.user_item_matrix.columns)}
+        self.reverse_item_mapping = {idx: item for item, idx in self.item_mapping.items()}
+        
         # Scale the ratings
-        user_item_scaled = self.scaler.fit_transform(self.user_item_matrix)
+        user_item_scaled = self.scaler.fit_transform(self.user_item_matrix.values)
         
         # Train NMF model
-        self.model = NMF(n_components=self.n_components, random_state=42)
         self.model.fit(user_item_scaled)
         
-        # Calculate item similarity matrix
+        # Calculate item similarity matrix for domain filtering
         item_features = self.model.components_.T
         self.item_similarity = cosine_similarity(item_features)
         
         print(f"Model trained with {len(self.user_item_matrix)} users and {len(self.user_item_matrix.columns)} products")
-        return True
+        return self
     
-    def get_user_recommendations(self, user_id, airport_code, passenger_segment, n_recommendations=5):
-        """Get personalized recommendations for a user"""
-        try:
-            if self.model is None:
-                self.train_model()
+    def recommend(self, user_id: str, domain: str, n: int = 5) -> List[Dict]:
+        """
+        Get domain-filtered recommendations for a user
+        
+        Args:
+            user_id: External user ID
+            domain: Target domain ('retail', 'f&b', 'lounge')
+            n: Number of recommendations
             
-            # If user doesn't exist, create new user profile
-            if user_id not in self.user_item_matrix.index:
-                user_ratings = np.zeros(len(self.user_item_matrix.columns))
+        Returns:
+            List of recommendation dictionaries
+        """
+        try:
+            if self.model is None or self.user_item_matrix is None:
+                return self._get_fallback_recommendations(domain, n)
+            
+            # Get or create user profile
+            if user_id in self.user_mapping:
+                user_idx = self.user_mapping[user_id]
+                user_ratings = self.user_item_matrix.iloc[user_idx].values
             else:
-                user_ratings = self.user_item_matrix.loc[user_id].values
+                # New user - use average ratings
+                user_ratings = np.mean(self.user_item_matrix.values, axis=0)
             
             # Transform user ratings
             user_scaled = self.scaler.transform([user_ratings])
@@ -133,108 +120,110 @@ class AirportRecommender:
             # Predict ratings for all items
             predicted_ratings = np.dot(user_factors, self.model.components_)[0]
             
-            # Get top recommendations
-            product_ids = self.user_item_matrix.columns.tolist()
+            # Filter items by domain
+            domain_items = self.products_df[
+                self.products_df['domain'].str.lower() == domain.lower()
+            ]['item_id'].tolist()
+            
+            # Get recommendations for domain items only
             recommendations = []
+            item_scores = []
             
-            # Sort by predicted rating
-            sorted_indices = np.argsort(predicted_ratings)[::-1]
+            for item_id in domain_items:
+                if item_id in self.item_mapping:
+                    item_idx = self.item_mapping[item_id]
+                    score = predicted_ratings[item_idx]
+                    
+                    # Skip if user already rated highly
+                    if user_ratings[item_idx] < 3.0:
+                        item_scores.append((item_id, score, item_idx))
             
-            count = 0
-            for idx in sorted_indices:
-                if count >= n_recommendations:
-                    break
-                    
-                # Skip items user has already rated highly
-                if user_ratings[idx] < 3.0:  # Only recommend if not already purchased/rated
-                    product_id = product_ids[idx]
-                    predicted_rating = predicted_ratings[idx]
-                    
-                    # Get product details
-                    product_info = self.products_df[
-                        self.products_df['product_id'] == product_id
-                    ].iloc[0] if len(self.products_df) > 0 else {'name': f'Product {product_id}', 'category': 'General'}
-                    
-                    recommendations.append({
-                        'product_id': product_id,
-                        'predicted_rating': float(predicted_rating),
-                        'confidence': min(1.0, abs(predicted_rating) / 5.0),
-                        'product_name': product_info.get('name', f'Product {product_id}'),
-                        'category': product_info.get('category', 'General'),
-                        'price': product_info.get('price', 100),
-                        'airport_code': airport_code,
-                        'passenger_segment': passenger_segment
-                    })
-                    count += 1
+            # Sort by predicted rating and take top n
+            item_scores.sort(key=lambda x: x[1], reverse=True)
+            
+            for i, (item_id, score, item_idx) in enumerate(item_scores[:n]):
+                # Get product details
+                product_info = self.products_df[
+                    self.products_df['item_id'] == item_id
+                ].iloc[0]
+                
+                recommendations.append({
+                    'product_id': item_id,
+                    'predicted_rating': float(score),
+                    'confidence': min(1.0, abs(score) / 5.0),
+                    'product_name': product_info.get('name', f'Product {item_id}'),
+                    'category': product_info.get('category', domain.title()),
+                    'domain': domain,
+                    'price': float(product_info.get('price', 100)),
+                    'rank': i + 1
+                })
             
             return recommendations
             
         except Exception as e:
             print(f"Error generating recommendations: {e}")
-            return self._get_fallback_recommendations(airport_code, passenger_segment, n_recommendations)
+            return self._get_fallback_recommendations(domain, n)
     
-    def _get_fallback_recommendations(self, airport_code, passenger_segment, n_recommendations):
+    def _get_fallback_recommendations(self, domain: str, n: int) -> List[Dict]:
         """Fallback recommendations when model fails"""
-        fallback_products = [
-            {'product_id': 'COFFEE001', 'name': 'Premium Coffee', 'category': 'Food & Beverage', 'price': 150},
-            {'product_id': 'SNACK001', 'name': 'Local Snacks', 'category': 'Food & Beverage', 'price': 200},
-            {'product_id': 'BOOK001', 'name': 'Travel Guide', 'category': 'Books', 'price': 300},
-            {'product_id': 'SOUVENIR001', 'name': 'Local Souvenirs', 'category': 'Souvenirs', 'price': 500},
-            {'product_id': 'ELECTRONICS001', 'name': 'Travel Accessories', 'category': 'Electronics', 'price': 800}
-        ]
+        fallback_by_domain = {
+            'retail': [
+                {'product_id': 'RET001', 'name': 'Travel Accessories', 'price': 800},
+                {'product_id': 'RET002', 'name': 'Electronics Bundle', 'price': 1200},
+                {'product_id': 'RET003', 'name': 'Local Souvenirs', 'price': 500},
+                {'product_id': 'RET004', 'name': 'Books & Magazines', 'price': 300},
+                {'product_id': 'RET005', 'name': 'Fashion Accessories', 'price': 600}
+            ],
+            'f&b': [
+                {'product_id': 'FB001', 'name': 'Premium Coffee', 'price': 150},
+                {'product_id': 'FB002', 'name': 'Gourmet Sandwich', 'price': 250},
+                {'product_id': 'FB003', 'name': 'Local Cuisine', 'price': 400},
+                {'product_id': 'FB004', 'name': 'Fresh Juice', 'price': 120},
+                {'product_id': 'FB005', 'name': 'Artisan Pastries', 'price': 180}
+            ],
+            'lounge': [
+                {'product_id': 'LNG001', 'name': 'Premium Lounge Access', 'price': 2000},
+                {'product_id': 'LNG002', 'name': 'Spa Services', 'price': 1500},
+                {'product_id': 'LNG003', 'name': 'Business Center', 'price': 500},
+                {'product_id': 'LNG004', 'name': 'Private Meeting Room', 'price': 1000},
+                {'product_id': 'LNG005', 'name': 'Shower Facilities', 'price': 300}
+            ]
+        }
         
+        domain_products = fallback_by_domain.get(domain.lower(), fallback_by_domain['retail'])
         recommendations = []
-        for i, product in enumerate(fallback_products[:n_recommendations]):
+        
+        for i, product in enumerate(domain_products[:n]):
             recommendations.append({
                 'product_id': product['product_id'],
                 'predicted_rating': 4.0 - (i * 0.2),
                 'confidence': 0.8 - (i * 0.1),
                 'product_name': product['name'],
-                'category': product['category'],
+                'category': domain.title(),
+                'domain': domain,
                 'price': product['price'],
-                'airport_code': airport_code,
-                'passenger_segment': passenger_segment
+                'rank': i + 1
             })
         
         return recommendations
     
-    def get_product_similarity(self, product_id, n_similar=5):
-        """Get similar products using item-based collaborative filtering"""
-        try:
-            if self.item_similarity is None:
-                return []
-            
-            product_ids = self.user_item_matrix.columns.tolist()
-            if product_id not in product_ids:
-                return []
-            
-            product_idx = product_ids.index(product_id)
-            similarities = self.item_similarity[product_idx]
-            
-            # Get most similar products
-            similar_indices = np.argsort(similarities)[::-1][1:n_similar+1]  # Exclude self
-            
-            similar_products = []
-            for idx in similar_indices:
-                similar_products.append({
-                    'product_id': product_ids[idx],
-                    'similarity_score': float(similarities[idx])
-                })
-            
-            return similar_products
-            
-        except Exception as e:
-            print(f"Error getting similar products: {e}")
-            return []
+    def get_domain_products(self, domain: str) -> pd.DataFrame:
+        """Get all products in a specific domain"""
+        if self.products_df is not None:
+            return self.products_df[
+                self.products_df['domain'].str.lower() == domain.lower()
+            ].copy()
+        return pd.DataFrame()
     
-    def calculate_conversion_lift(self, recommendations, baseline_conversion=0.15):
+    def calculate_conversion_lift(self, recommendations: List[Dict], baseline_conversion: float = 0.15) -> Dict:
         """Calculate expected conversion lift from recommendations"""
         if not recommendations:
             return {
                 'baseline_conversion': baseline_conversion,
                 'predicted_conversion': baseline_conversion,
                 'conversion_lift': 0.0,
-                'expected_revenue_uplift': 0.0
+                'expected_revenue_uplift': 0.0,
+                'recommendation_count': 0
             }
         
         # Calculate weighted conversion based on confidence scores
@@ -256,37 +245,107 @@ class AirportRecommender:
             'recommendation_count': len(recommendations)
         }
     
-    def save_model(self, filepath='models/recommender_model.pkl'):
-        """Save trained model"""
+    def save(self, path: str):
+        """Save trained model and dataset"""
         try:
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             model_data = {
                 'model': self.model,
                 'user_item_matrix': self.user_item_matrix,
+                'products_df': self.products_df,
                 'scaler': self.scaler,
                 'item_similarity': self.item_similarity,
-                'products_df': self.products_df
+                'user_mapping': self.user_mapping,
+                'item_mapping': self.item_mapping,
+                'reverse_item_mapping': self.reverse_item_mapping
             }
-            with open(filepath, 'wb') as f:
+            with open(path, 'wb') as f:
                 pickle.dump(model_data, f)
-            print(f"Model saved to {filepath}")
+            print(f"Model saved to {path}")
         except Exception as e:
             print(f"Error saving model: {e}")
     
-    def load_model(self, filepath='models/recommender_model.pkl'):
-        """Load trained model"""
+    @classmethod
+    def load(cls, path: str):
+        """Load trained model and dataset"""
         try:
-            with open(filepath, 'rb') as f:
+            with open(path, 'rb') as f:
                 model_data = pickle.load(f)
             
-            self.model = model_data['model']
-            self.user_item_matrix = model_data['user_item_matrix']
-            self.scaler = model_data['scaler']
-            self.item_similarity = model_data['item_similarity']
-            self.products_df = model_data['products_df']
+            instance = cls()
+            instance.model = model_data['model']
+            instance.user_item_matrix = model_data['user_item_matrix']
+            instance.products_df = model_data['products_df']
+            instance.scaler = model_data['scaler']
+            instance.item_similarity = model_data['item_similarity']
+            instance.user_mapping = model_data['user_mapping']
+            instance.item_mapping = model_data['item_mapping']
+            instance.reverse_item_mapping = model_data['reverse_item_mapping']
             
-            print(f"Model loaded from {filepath}")
-            return True
+            print(f"Model loaded from {path}")
+            return instance
         except Exception as e:
             print(f"Error loading model: {e}")
-            return False
+            return cls()
+
+# Legacy compatibility class
+class AirportRecommender(DomainRecommender):
+    """Legacy wrapper for backward compatibility"""
+    
+    def __init__(self):
+        super().__init__()
+    
+    def train_model(self):
+        """Legacy method for training"""
+        # Generate sample data if no real data exists
+        interactions_df = self._generate_sample_interactions()
+        products_df = self._generate_sample_products()
+        return self.fit(interactions_df, products_df)
+    
+    def get_user_recommendations(self, user_id: str, airport_code: str, passenger_segment: str, n_recommendations: int = 5):
+        """Legacy method for getting recommendations"""
+        # Default to retail domain for legacy compatibility
+        return self.recommend(user_id, 'retail', n_recommendations)
+    
+    def _generate_sample_interactions(self):
+        """Generate sample interaction data"""
+        np.random.seed(42)
+        
+        passengers = [f'P{i:04d}' for i in range(1, 501)]
+        products = [f'PROD_{i:03d}' for i in range(1, 51)]
+        
+        data = []
+        for passenger in passengers:
+            n_purchases = np.random.randint(1, 6)
+            purchased_products = np.random.choice(products, n_purchases, replace=False)
+            
+            for product in purchased_products:
+                rating = np.random.uniform(1, 5)
+                data.append({
+                    'user_id': passenger,
+                    'item_id': product,
+                    'rating': rating
+                })
+        
+        return pd.DataFrame(data)
+    
+    def _generate_sample_products(self):
+        """Generate sample product data with domains"""
+        np.random.seed(42)
+        
+        products = [f'PROD_{i:03d}' for i in range(1, 51)]
+        categories = ['Food & Beverage', 'Retail', 'Electronics', 'Books', 'Souvenirs', 'Lounge']
+        domains = ['f&b', 'retail', 'retail', 'retail', 'retail', 'lounge']
+        
+        data = []
+        for i, product_id in enumerate(products):
+            category_idx = i % len(categories)
+            data.append({
+                'item_id': product_id,
+                'name': f'Product {i+1}',
+                'category': categories[category_idx],
+                'domain': domains[category_idx],
+                'price': np.random.uniform(50, 500)
+            })
+        
+        return pd.DataFrame(data)
