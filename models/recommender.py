@@ -22,7 +22,7 @@ from config.airport_profiles import AIRPORT_PROFILES
 class DomainRecommender:
     def __init__(self, no_components: int = 32, learning_rate: float = 0.05, loss: str = 'warp'):
         """Initialize domain-aware recommender system"""
-        self.model = NMF(n_components=no_components, random_state=42)
+        self.model = NMF(n_components=no_components, random_state=42, max_iter=200)
         self.user_item_matrix = None
         self.products_df = None
         self.scaler = MinMaxScaler()

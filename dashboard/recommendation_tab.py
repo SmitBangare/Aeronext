@@ -116,7 +116,7 @@ def render_recommendation_tab():
         is_frequent_flyer = st.checkbox("Frequent Flyer", value=False)
     
     # Generate recommendations button
-    if st.button("🚀 Generate Recommendations", type="primary"):
+    if st.button("🚀 Generate Recommendations", type="primary", key="generate_recs"):
         
         # Simulate passenger ID
         passenger_id = f"SIM_{selected_airport}_{passenger_segment[:3].upper()}_{int(datetime.now().timestamp()) % 10000}"
@@ -126,48 +126,22 @@ def render_recommendation_tab():
             # Get domain-specific recommendations from the model
             if hasattr(recommender, 'recommend'):
                 # Use new domain-aware recommender
-                recommendations = recommender.recommend(
+                st.session_state.recommendations = recommender.recommend(
                     user_id=passenger_id,
                     domain=selected_domain,
                     n=5
                 )
             else:
                 # Fallback to legacy method
-                recommendations = recommender.get_user_recommendations(
+                st.session_state.recommendations = recommender.get_user_recommendations(
                     user_id=passenger_id,
                     airport_code=selected_airport,
                     passenger_segment=passenger_segment,
                     n_recommendations=5
                 )
-        
-    # Initialize variables outside the button context
-    recommendations = []
-    products_df = pd.DataFrame()
     
-    # Generate recommendations button
-    if st.button("🚀 Generate Recommendations", type="primary"):
-        
-        # Simulate passenger ID
-        passenger_id = f"SIM_{selected_airport}_{passenger_segment[:3].upper()}_{int(datetime.now().timestamp()) % 10000}"
-        
-        with st.spinner("Analyzing passenger profile and generating recommendations..."):
-            
-            # Get domain-specific recommendations from the model
-            if hasattr(recommender, 'recommend'):
-                # Use new domain-aware recommender
-                recommendations = recommender.recommend(
-                    user_id=passenger_id,
-                    domain=selected_domain,
-                    n=5
-                )
-            else:
-                # Fallback to legacy method
-                recommendations = recommender.get_user_recommendations(
-                    user_id=passenger_id,
-                    airport_code=selected_airport,
-                    passenger_segment=passenger_segment,
-                    n_recommendations=5
-                )
+    # Get recommendations from session state
+    recommendations = st.session_state.get('recommendations', [])
     
     # Display recommendations (always shown, even if empty)
     st.subheader("💎 Personalized Recommendations")
