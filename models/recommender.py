@@ -56,142 +56,170 @@ class AirportRecommender:
     def _generate_sample_data(self):
         """Generate sample data if files don't exist"""
         np.random.seed(42)
-        users = [f"USER_{i:03d}" for i in range(1, 101)]
-        products = [f"PROD_{i:03d}" for i in range(1, 31)]
+        
+        # Generate sample transactions
+        passengers = [f'P{i:04d}' for i in range(1, 501)]
+        products = [f'PROD_{i:03d}' for i in range(1, 51)]
         
         data = []
-        for user in users:
-            # Each user rates 5-15 products
-            n_ratings = np.random.randint(5, 16)
-            user_products = np.random.choice(products, n_ratings, replace=False)
-            for product in user_products:
-                rating = np.random.randint(1, 6)
-                data.append([user, product, rating])
+        for passenger in passengers:
+            # Each passenger buys 1-5 products
+            n_purchases = np.random.randint(1, 6)
+            purchased_products = np.random.choice(products, n_purchases, replace=False)
+            
+            for product in purchased_products:
+                rating = np.random.uniform(1, 5)
+                data.append({
+                    'passenger_id': passenger,
+                    'product_id': product,
+                    'rating': rating
+                })
         
-        return pd.DataFrame(data, columns=['passenger_id', 'product_id', 'rating'])
+        # Generate sample products
+        categories = ['Food & Beverage', 'Retail', 'Electronics', 'Books', 'Souvenirs']
+        self.products_df = pd.DataFrame({
+            'product_id': products,
+            'name': [f'Product {i}' for i in range(1, 51)],
+            'category': np.random.choice(categories, len(products)),
+            'price': np.random.uniform(50, 500, len(products))
+        })
+        
+        return pd.DataFrame(data)
     
     def train_model(self):
         """Train the recommendation model"""
         # Load data
         ratings_df = self.load_data()
         
-        # Prepare data for Surprise
-        reader = Reader(rating_scale=(1, 5))
-        data = Dataset.load_from_df(ratings_df, reader)
+        # Create user-item matrix
+        self.user_item_matrix = ratings_df.pivot(
+            index='passenger_id', 
+            columns='product_id', 
+            values='rating'
+        ).fillna(0)
         
-        # Split data
-        self.trainset, self.testset = train_test_split(data, test_size=0.2, random_state=42)
+        # Scale the ratings
+        user_item_scaled = self.scaler.fit_transform(self.user_item_matrix)
         
-        # Train SVD model for matrix factorization
-        self.model = SVD(n_factors=50, lr_all=0.005, reg_all=0.02, random_state=42)
-        self.model.fit(self.trainset)
+        # Train NMF model
+        self.model = NMF(n_components=self.n_components, random_state=42)
+        self.model.fit(user_item_scaled)
         
-        # Train KNN model for similarity-based recommendations
-        self.knn_model = KNNBasic(k=10, sim_options={'name': 'cosine', 'user_based': True})
-        self.knn_model.fit(self.trainset)
+        # Calculate item similarity matrix
+        item_features = self.model.components_.T
+        self.item_similarity = cosine_similarity(item_features)
         
-        return self
+        print(f"Model trained with {len(self.user_item_matrix)} users and {len(self.user_item_matrix.columns)} products")
+        return True
     
     def get_user_recommendations(self, user_id, airport_code, passenger_segment, n_recommendations=5):
         """Get personalized recommendations for a user"""
-        if not self.model:
-            self.train_model()
-        
         try:
-            # Get all products for the airport
-            if self.products_df is not None:
-                airport_products = self.products_df[
-                    self.products_df['airport_code'] == airport_code
-                ]['product_id'].tolist()
-            else:
-                # Fallback to generic products
-                airport_products = [f"PROD_{i:03d}" for i in range(1, 21)]
+            if self.model is None:
+                self.train_model()
             
-            # Get predictions for all products
-            predictions = []
-            for product_id in airport_products:
-                pred = self.model.predict(user_id, product_id)
-                predictions.append({
-                    'product_id': product_id,
-                    'predicted_rating': pred.est,
-                    'confidence': 1 - abs(pred.est - 3) / 2  # Simple confidence metric
-                })
+            # If user doesn't exist, create new user profile
+            if user_id not in self.user_item_matrix.index:
+                user_ratings = np.zeros(len(self.user_item_matrix.columns))
+            else:
+                user_ratings = self.user_item_matrix.loc[user_id].values
+            
+            # Transform user ratings
+            user_scaled = self.scaler.transform([user_ratings])
+            
+            # Get user factors
+            user_factors = self.model.transform(user_scaled)
+            
+            # Predict ratings for all items
+            predicted_ratings = np.dot(user_factors, self.model.components_)[0]
+            
+            # Get top recommendations
+            product_ids = self.user_item_matrix.columns.tolist()
+            recommendations = []
             
             # Sort by predicted rating
-            predictions.sort(key=lambda x: x['predicted_rating'], reverse=True)
+            sorted_indices = np.argsort(predicted_ratings)[::-1]
             
-            # Apply business rules based on passenger segment
-            if passenger_segment == 'business':
-                # Prefer electronics and premium F&B
-                category_weights = {
-                    'Electronics & Gadgets': 1.2,
-                    'Food & Beverage': 1.1,
-                    'Fashion & Accessories': 1.0,
-                    'Books & Magazines': 0.9,
-                    'Souvenirs & Gifts': 0.8
-                }
-            else:  # leisure
-                # Prefer souvenirs and casual items
-                category_weights = {
-                    'Souvenirs & Gifts': 1.2,
-                    'Food & Beverage': 1.1,
-                    'Fashion & Accessories': 1.0,
-                    'Books & Magazines': 0.9,
-                    'Electronics & Gadgets': 0.8
-                }
-            
-            # Adjust predictions based on segment
-            for pred in predictions:
-                if self.products_df is not None:
+            count = 0
+            for idx in sorted_indices:
+                if count >= n_recommendations:
+                    break
+                    
+                # Skip items user has already rated highly
+                if user_ratings[idx] < 3.0:  # Only recommend if not already purchased/rated
+                    product_id = product_ids[idx]
+                    predicted_rating = predicted_ratings[idx]
+                    
+                    # Get product details
                     product_info = self.products_df[
-                        self.products_df['product_id'] == pred['product_id']
-                    ]
-                    if not product_info.empty:
-                        category = product_info.iloc[0]['category']
-                        weight = category_weights.get(category, 1.0)
-                        pred['predicted_rating'] *= weight
+                        self.products_df['product_id'] == product_id
+                    ].iloc[0] if len(self.products_df) > 0 else {'name': f'Product {product_id}', 'category': 'General'}
+                    
+                    recommendations.append({
+                        'product_id': product_id,
+                        'predicted_rating': float(predicted_rating),
+                        'confidence': min(1.0, abs(predicted_rating) / 5.0),
+                        'product_name': product_info.get('name', f'Product {product_id}'),
+                        'category': product_info.get('category', 'General'),
+                        'price': product_info.get('price', 100),
+                        'airport_code': airport_code,
+                        'passenger_segment': passenger_segment
+                    })
+                    count += 1
             
-            # Re-sort and return top N
-            predictions.sort(key=lambda x: x['predicted_rating'], reverse=True)
-            return predictions[:n_recommendations]
+            return recommendations
             
         except Exception as e:
-            print(f"Error getting recommendations: {e}")
+            print(f"Error generating recommendations: {e}")
             return self._get_fallback_recommendations(airport_code, passenger_segment, n_recommendations)
     
     def _get_fallback_recommendations(self, airport_code, passenger_segment, n_recommendations):
         """Fallback recommendations when model fails"""
-        if passenger_segment == 'business':
-            products = [
-                {'product_id': 'PROD_003', 'predicted_rating': 4.5, 'confidence': 0.8},
-                {'product_id': 'PROD_001', 'predicted_rating': 4.2, 'confidence': 0.7},
-                {'product_id': 'PROD_004', 'predicted_rating': 4.0, 'confidence': 0.6},
-            ]
-        else:
-            products = [
-                {'product_id': 'PROD_006', 'predicted_rating': 4.3, 'confidence': 0.8},
-                {'product_id': 'PROD_002', 'predicted_rating': 4.1, 'confidence': 0.7},
-                {'product_id': 'PROD_005', 'predicted_rating': 3.9, 'confidence': 0.6},
-            ]
-        return products[:n_recommendations]
+        fallback_products = [
+            {'product_id': 'COFFEE001', 'name': 'Premium Coffee', 'category': 'Food & Beverage', 'price': 150},
+            {'product_id': 'SNACK001', 'name': 'Local Snacks', 'category': 'Food & Beverage', 'price': 200},
+            {'product_id': 'BOOK001', 'name': 'Travel Guide', 'category': 'Books', 'price': 300},
+            {'product_id': 'SOUVENIR001', 'name': 'Local Souvenirs', 'category': 'Souvenirs', 'price': 500},
+            {'product_id': 'ELECTRONICS001', 'name': 'Travel Accessories', 'category': 'Electronics', 'price': 800}
+        ]
+        
+        recommendations = []
+        for i, product in enumerate(fallback_products[:n_recommendations]):
+            recommendations.append({
+                'product_id': product['product_id'],
+                'predicted_rating': 4.0 - (i * 0.2),
+                'confidence': 0.8 - (i * 0.1),
+                'product_name': product['name'],
+                'category': product['category'],
+                'price': product['price'],
+                'airport_code': airport_code,
+                'passenger_segment': passenger_segment
+            })
+        
+        return recommendations
     
     def get_product_similarity(self, product_id, n_similar=5):
         """Get similar products using item-based collaborative filtering"""
-        if not self.knn_model:
-            self.train_model()
-        
         try:
-            # Get inner product ID
-            inner_product_id = self.trainset.to_inner_iid(product_id)
+            if self.item_similarity is None:
+                return []
             
-            # Get similar items
-            similar_items = self.knn_model.get_neighbors(inner_product_id, k=n_similar)
+            product_ids = self.user_item_matrix.columns.tolist()
+            if product_id not in product_ids:
+                return []
             
-            # Convert back to raw IDs
+            product_idx = product_ids.index(product_id)
+            similarities = self.item_similarity[product_idx]
+            
+            # Get most similar products
+            similar_indices = np.argsort(similarities)[::-1][1:n_similar+1]  # Exclude self
+            
             similar_products = []
-            for inner_id in similar_items:
-                raw_id = self.trainset.to_raw_iid(inner_id)
-                similar_products.append(raw_id)
+            for idx in similar_indices:
+                similar_products.append({
+                    'product_id': product_ids[idx],
+                    'similarity_score': float(similarities[idx])
+                })
             
             return similar_products
             
@@ -202,26 +230,46 @@ class AirportRecommender:
     def calculate_conversion_lift(self, recommendations, baseline_conversion=0.15):
         """Calculate expected conversion lift from recommendations"""
         if not recommendations:
-            return 0.0
+            return {
+                'baseline_conversion': baseline_conversion,
+                'predicted_conversion': baseline_conversion,
+                'conversion_lift': 0.0,
+                'expected_revenue_uplift': 0.0
+            }
         
-        # Higher predicted ratings should lead to higher conversion
-        avg_rating = np.mean([r['predicted_rating'] for r in recommendations])
-        avg_confidence = np.mean([r['confidence'] for r in recommendations])
+        # Calculate weighted conversion based on confidence scores
+        avg_confidence = sum(r['confidence'] for r in recommendations) / len(recommendations)
+        predicted_conversion = baseline_conversion * (1 + avg_confidence)
         
-        # Simple model: conversion lift based on rating and confidence
-        lift = (avg_rating - 3.0) * 0.1 * avg_confidence
-        return max(0.0, lift)
+        conversion_lift = (predicted_conversion - baseline_conversion) / baseline_conversion * 100
+        
+        # Calculate expected revenue uplift
+        avg_price = sum(r['price'] for r in recommendations) / len(recommendations)
+        expected_revenue_uplift = (predicted_conversion - baseline_conversion) * avg_price
+        
+        return {
+            'baseline_conversion': baseline_conversion,
+            'predicted_conversion': round(predicted_conversion, 3),
+            'conversion_lift': round(conversion_lift, 1),
+            'expected_revenue_uplift': round(expected_revenue_uplift, 2),
+            'avg_recommendation_price': round(avg_price, 2),
+            'recommendation_count': len(recommendations)
+        }
     
     def save_model(self, filepath='models/recommender_model.pkl'):
         """Save trained model"""
         try:
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            model_data = {
+                'model': self.model,
+                'user_item_matrix': self.user_item_matrix,
+                'scaler': self.scaler,
+                'item_similarity': self.item_similarity,
+                'products_df': self.products_df
+            }
             with open(filepath, 'wb') as f:
-                pickle.dump({
-                    'model': self.model,
-                    'knn_model': self.knn_model,
-                    'trainset': self.trainset
-                }, f)
+                pickle.dump(model_data, f)
+            print(f"Model saved to {filepath}")
         except Exception as e:
             print(f"Error saving model: {e}")
     
@@ -229,10 +277,16 @@ class AirportRecommender:
         """Load trained model"""
         try:
             with open(filepath, 'rb') as f:
-                data = pickle.load(f)
-                self.model = data['model']
-                self.knn_model = data['knn_model']
-                self.trainset = data['trainset']
+                model_data = pickle.load(f)
+            
+            self.model = model_data['model']
+            self.user_item_matrix = model_data['user_item_matrix']
+            self.scaler = model_data['scaler']
+            self.item_similarity = model_data['item_similarity']
+            self.products_df = model_data['products_df']
+            
+            print(f"Model loaded from {filepath}")
+            return True
         except Exception as e:
             print(f"Error loading model: {e}")
-            self.train_model()  # Train new model if loading fails
+            return False
