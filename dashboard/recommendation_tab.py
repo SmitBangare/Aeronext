@@ -18,27 +18,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.recommender import AirportRecommender, DomainRecommender
 from config.airport_profiles import AIRPORT_PROFILES
 from utils.plot_utils import create_recommendation_chart
-from utils.styling import (
-    create_domain_header, 
-    create_recommendation_card, 
-    create_colored_metric_card,
-    apply_chart_styling,
-    get_domain_icon
-)
 
 def render_recommendation_tab():
     """Render the AI recommendations tab"""
     
-    # Enhanced header with custom styling
-    st.markdown(create_domain_header('retail', 'AI-Powered Retail Personalization'), unsafe_allow_html=True)
+    st.header("🧠 AI-Powered Retail Personalization")
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #262730 0%, #1A1D29 100%); padding: 20px; border-radius: 10px; border: 1px solid #FF6B35; margin-bottom: 20px;">
-        <p style="font-family: 'Rajdhani', sans-serif; font-size: 16px; color: #FAFAFA; margin: 0; text-align: center;">
-        Generate personalized product recommendations using collaborative filtering 
-        based on passenger segments, purchase history, and real-time context.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    Generate personalized product recommendations using collaborative filtering 
+    based on passenger segments, purchase history, and real-time context.
+    """)
     
     # Get selected airport
     selected_airport = st.session_state.get('selected_airport', 'DEL')
@@ -155,57 +143,53 @@ def render_recommendation_tab():
     # Get recommendations from session state
     recommendations = st.session_state.get('recommendations', [])
     
-    # Enhanced recommendations display with styled cards
-    st.markdown(create_domain_header('analytics', 'Personalized Recommendations'), unsafe_allow_html=True)
+    # Display recommendations
+    st.subheader("💎 Personalized Recommendations")
     
     if recommendations:
         for i, rec in enumerate(recommendations):
-            domain = rec.get('domain', 'general')
-            card_html = create_recommendation_card(rec, domain)
-            st.markdown(card_html, unsafe_allow_html=True)
-            
-            # Action buttons with enhanced styling
-            col1, col2, col3 = st.columns([1, 1, 2])
-            with col1:
-                if st.button(f"View Details", key=f"view_{rec['product_id']}", help="See detailed product information"):
-                    st.success(f"Viewing details for {rec.get('product_name', 'Product')}")
-            with col2:
-                if st.button(f"Add to Cart", key=f"cart_{rec['product_id']}", help="Add to shopping cart"):
-                    st.success(f"Added {rec.get('product_name', 'Product')} to cart!")
+            with st.container():
+                st.markdown("---")
+                col1, col2, col3 = st.columns([1, 2, 1])
+                
+                with col1:
+                    domain_emoji = {'retail': '🛍️', 'f&b': '🍽️', 'lounge': '🏢'}
+                    domain = rec.get('domain', 'general')
+                    st.markdown(f"### {domain_emoji.get(domain, '📦')} {domain.upper()}")
+                    st.metric("Rating", f"{rec['predicted_rating']:.1f}/5.0")
+                    st.metric("Match", f"{rec['confidence']:.0%}")
+                
+                with col2:
+                    product_name = rec.get('product_name', f"Product {rec['product_id']}")
+                    st.markdown(f"### {product_name}")
+                    
+                    if rec.get('discount'):
+                        st.markdown(f"**🎯 Offer:** {rec['discount']}")
+                    if rec.get('brand'):
+                        st.markdown(f"**Brand:** {rec['brand']}")
+                    if rec.get('restaurant'):
+                        st.markdown(f"**Restaurant:** {rec['restaurant']}")
+                    if rec.get('lounge'):
+                        st.markdown(f"**Location:** {rec['lounge']}")
+                
+                with col3:
+                    price = rec.get('price', 100)
+                    st.metric("Price", f"₹{price:,.0f}")
+                    st.button(f"View Details", key=f"view_{rec['product_id']}")
+                    st.button(f"Add to Cart", key=f"cart_{rec['product_id']}")
         
-        # Enhanced impact metrics with colored cards
-        st.markdown(create_domain_header('analytics', 'Expected Impact'), unsafe_allow_html=True)
-        
+        # Impact metrics
+        st.subheader("📊 Expected Impact")
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            conversion_card = create_colored_metric_card(
-                "Conversion Lift", 
-                "+25.3%", 
-                "vs baseline 15%", 
-                "nps"
-            )
-            st.markdown(conversion_card, unsafe_allow_html=True)
-        
+            st.metric("Conversion Lift", "+25.3%", "vs baseline 15%")
         with col2:
             avg_price = np.mean([rec.get('price', 100) for rec in recommendations])
-            revenue_card = create_colored_metric_card(
-                "Avg Revenue/Pax", 
-                f"₹{avg_price:.0f}", 
-                f"+₹{avg_price-150:.0f} increase", 
-                "revenue"
-            )
-            st.markdown(revenue_card, unsafe_allow_html=True)
-        
+            st.metric("Avg Revenue/Pax", f"₹{avg_price:.0f}", f"+₹{avg_price-150:.0f}")
         with col3:
             engagement = np.mean([rec['confidence'] for rec in recommendations])
-            engagement_card = create_colored_metric_card(
-                "Engagement Score", 
-                f"{engagement:.2f}", 
-                "Personalization quality", 
-                "recommendation"
-            )
-            st.markdown(engagement_card, unsafe_allow_html=True)
+            st.metric("Engagement", f"{engagement:.2f}", "Quality score")
     
     else:
         st.info(f"Click 'Generate Recommendations' above to see personalized {domain_names.get(selected_domain, 'product')} suggestions.")

@@ -89,18 +89,85 @@ class DomainRecommender:
     
     def recommend(self, user_id: str, domain: str, n: int = 5) -> List[Dict]:
         """
-        Get domain-filtered recommendations for a user
-        
-        Args:
-            user_id: External user ID
-            domain: Target domain ('retail', 'f&b', 'lounge')
-            n: Number of recommendations
-            
-        Returns:
-            List of recommendation dictionaries
+        Get domain-filtered recommendations for a user based on NMF predictions.
         """
-        # Always use fallback recommendations for now to ensure consistent results
-        return self._get_fallback_recommendations(domain, n)
+        if self.user_item_matrix is None or self.products_df is None or self.model is None:
+            # Fallback if model not trained or data not loaded
+            return self._get_fallback_recommendations(domain, n)
+
+        # Handle new users (cold start)
+        if user_id not in self.user_mapping:
+            # For new users, use a simpler popularity-based or domain-specific fallback
+            # For this demo, we'll use the existing _get_fallback_recommendations
+            return self._get_fallback_recommendations(domain, n)
+
+        user_idx = self.user_mapping[user_id]
+        
+        # Get user latent features
+        user_features = self.model.transform(self.user_item_matrix.iloc[user_idx].values.reshape(1, -1))
+        
+        # Predict ratings for all items
+        predicted_ratings_scaled = self.model.inverse_transform(user_features)
+        
+        # Inverse transform to original rating scale
+        predicted_ratings = self.scaler.inverse_transform(predicted_ratings_scaled).flatten()
+        
+        # Create a series of predicted ratings for all items, mapping to item_ids
+        all_item_predictions = pd.Series(predicted_ratings, index=self.user_item_matrix.columns)
+        
+        # Filter products by domain
+        domain_products_df = self.products_df[self.products_df['domain'].str.lower() == domain.lower()]
+        
+        # Get predicted ratings only for items in the selected domain and that exist in item_mapping
+        relevant_predictions = all_item_predictions[all_item_predictions.index.isin(domain_products_df['item_id'])]
+        
+        # Sort recommendations by predicted rating in descending order
+        # Exclude items the user has already interacted with (rated > 0 in user_item_matrix)
+        user_interacted_items = self.user_item_matrix.iloc[user_idx][self.user_item_matrix.iloc[user_idx] > 0].index
+        
+        # Remove already interacted items from recommendations
+        recommendations_candidates = relevant_predictions[~relevant_predictions.index.isin(user_interacted_items)]
+        
+        # Get top N items
+        top_n_items = recommendations_candidates.nlargest(n).index.tolist()
+        
+        recommendations_list = []
+        for item_id in top_n_items:
+            product_info = domain_products_df[domain_products_df['item_id'] == item_id].iloc[0]
+            
+            predicted_score = recommendations_candidates[item_id]
+            
+            # Map predicted score to a more human-readable rating (e.g., 1-5) and confidence (0-1)
+            # This is a heuristic and might need tuning based on actual data distribution
+            display_rating = max(1.0, min(5.0, (predicted_score / self.scaler.data_max_.max()) * 5.0))
+            confidence = max(0.1, min(1.0, predicted_score / self.scaler.data_max_.max())) # Simple confidence
+
+            recommendations_list.append({
+                'product_id': item_id,
+                'predicted_rating': round(display_rating, 1),
+                'confidence': round(confidence, 2),
+                'product_name': product_info['name'],
+                'category': product_info['category'],
+                'domain': product_info['domain'],
+                'price': product_info['price'],
+                'discount': product_info.get('discount', ''),
+                'brand': product_info.get('brand', ''),
+                'restaurant': product_info.get('restaurant', ''),
+                'lounge': product_info.get('lounge', ''),
+                'rank': len(recommendations_list) + 1
+            })
+            
+        # If not enough recommendations from NMF, pad with fallback
+        if len(recommendations_list) < n:
+            fallback_recs = self._get_fallback_recommendations(domain, n - len(recommendations_list))
+            existing_ids = {rec['product_id'] for rec in recommendations_list}
+            for rec in fallback_recs:
+                if rec['product_id'] not in existing_ids:
+                    recommendations_list.append(rec)
+                    if len(recommendations_list) == n:
+                        break
+        
+        return recommendations_list
     
     def _get_fallback_recommendations(self, domain: str, n: int) -> List[Dict]:
         """Fallback recommendations when model fails"""

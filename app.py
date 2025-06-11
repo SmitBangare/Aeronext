@@ -18,7 +18,6 @@ from dashboard.comparison_tab import render_comparison_tab
 # Import utilities
 from simulation.data_generator import generate_all_data
 from config.airport_profiles import AIRPORT_PROFILES
-from utils.styling import apply_custom_css, get_domain_icon, create_domain_header
 
 def main():
     # Configure page
@@ -29,27 +28,9 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Apply custom dark mode styling
-    apply_custom_css()
-    
-    # Enhanced Header with Airport Icon
-    airport_icon = get_domain_icon('airport')
-    header_html = f"""
-    <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #0E1117 0%, #262730 100%); border-radius: 15px; margin-bottom: 30px; border: 2px solid #FF6B35;">
-        <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
-            {airport_icon}
-            <h1 style="margin-left: 20px; font-family: 'Orbitron', monospace; font-size: 3rem; background: linear-gradient(45deg, #FF6B35, #F7931E, #FFD700); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 30px rgba(255, 107, 53, 0.5);">
-                AeroNexus AI
-            </h1>
-        </div>
-        <p style="font-family: 'Rajdhani', sans-serif; font-size: 1.4rem; color: #FAFAFA; opacity: 0.9; font-weight: 500;">
-            AI-Driven Airport Revenue Optimization Platform
-        </p>
-        <div style="background: linear-gradient(90deg, #FF6B35, #F7931E, #FFD700); height: 3px; width: 200px; margin: 20px auto; border-radius: 2px;"></div>
-    </div>
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
-    
+    st.title("🛫 AeroNexus AI")
+    st.markdown("AI-Driven Airport Revenue Optimization Platform")
+
     # Initialize data if not exists
     if not os.path.exists('data/delhi_passengers.csv'):
         with st.spinner('Initializing simulation data...'):
@@ -63,8 +44,8 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Airport selection with icon
-        st.markdown(create_domain_header('airport', 'Airport Selection'), unsafe_allow_html=True)
+        # Airport selection
+        st.subheader("✈️ Airport Selection")
         selected_airport = st.selectbox(
             "Choose Airport",
             options=list(AIRPORT_PROFILES.keys()),
@@ -100,37 +81,6 @@ def main():
             generate_all_data()
         st.success("Data refreshed successfully!")
         st.rerun()
-    
-    # Enhanced Tab Navigation with Icons
-    overview_icon = get_domain_icon('analytics')
-    rec_icon = get_domain_icon('retail') 
-    pricing_icon = get_domain_icon('pricing')
-    sentiment_icon = get_domain_icon('f&b')
-    comparison_icon = get_domain_icon('airport')
-    
-    # Create custom tab headers
-    tab_html = f"""
-    <div style="background: linear-gradient(135deg, #262730 0%, #1A1D29 100%); padding: 10px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #FF6B35;">
-        <div style="display: flex; justify-content: space-around; align-items: center;">
-            <div style="text-align: center; font-family: 'Orbitron', monospace; color: #FAFAFA;">
-                {overview_icon}<br><span style="font-size: 12px;">Overview</span>
-            </div>
-            <div style="text-align: center; font-family: 'Orbitron', monospace; color: #FAFAFA;">
-                {rec_icon}<br><span style="font-size: 12px;">AI Recommendations</span>
-            </div>
-            <div style="text-align: center; font-family: 'Orbitron', monospace; color: #FAFAFA;">
-                {pricing_icon}<br><span style="font-size: 12px;">Dynamic Pricing</span>
-            </div>
-            <div style="text-align: center; font-family: 'Orbitron', monospace; color: #FAFAFA;">
-                {sentiment_icon}<br><span style="font-size: 12px;">Sentiment & NPS</span>
-            </div>
-            <div style="text-align: center; font-family: 'Orbitron', monospace; color: #FAFAFA;">
-                {comparison_icon}<br><span style="font-size: 12px;">Comparison</span>
-            </div>
-        </div>
-    </div>
-    """
-    st.markdown(tab_html, unsafe_allow_html=True)
     
     # Main tabs with simplified labels
     tab1, tab2, tab3, tab4, tab5 = st.tabs([

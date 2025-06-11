@@ -18,12 +18,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.airport_profiles import AIRPORT_PROFILES, KPI_TARGETS
 from utils.kpi_calculator import KPICalculator
 from utils.plot_utils import create_gauge_chart, create_metric_comparison
-from utils.styling import (
-    create_domain_header, 
-    create_colored_metric_card,
-    apply_chart_styling,
-    get_domain_icon
-)
 
 def render_overview_tab():
     """Render the overview tab with airport profiles and KPIs"""
@@ -32,24 +26,16 @@ def render_overview_tab():
     selected_airport = st.session_state.get('selected_airport', 'DEL')
     airport_profile = AIRPORT_PROFILES[selected_airport]
     
-    # Enhanced header with airport icon and styling
-    airport_icon = get_domain_icon('airport')
-    header_html = f"""
-    <div style="background: linear-gradient(135deg, #262730 0%, #1A1D29 100%); padding: 30px; border-radius: 15px; margin-bottom: 30px; border: 2px solid #FF6B35;">
-        <div style="display: flex; align-items: center; margin-bottom: 15px;">
-            {airport_icon}
-            <h2 style="margin-left: 20px; font-family: 'Orbitron', monospace; background: linear-gradient(45deg, #FF6B35, #F7931E, #FFD700); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                {airport_profile['name']} ({selected_airport})
-            </h2>
-        </div>
-        <p style="font-family: 'Rajdhani', sans-serif; color: #FAFAFA; margin: 0; font-size: 18px; opacity: 0.9;">
+    # Header section
+    st.markdown(f"""
+    <div style='background: linear-gradient(90deg, #1f77b4, #ff7f0e); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+        <h2 style='color: white; margin: 0;'>🛫 {airport_profile['name']} ({selected_airport})</h2>
+        <p style='color: white; margin: 10px 0 0 0; font-size: 1.1em;'>
             {airport_profile['passenger_volume']:,} passengers annually | 
             {airport_profile['tech_readiness']} technology readiness
         </p>
-        <div style="background: linear-gradient(90deg, #FF6B35, #F7931E, #FFD700); height: 2px; width: 100%; margin: 15px 0; border-radius: 1px;"></div>
     </div>
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     
     # Key metrics row
     col1, col2, col3, col4 = st.columns(4)
