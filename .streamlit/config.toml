@@ -4,11 +4,11 @@ address = "0.0.0.0"
 port = 5000
 
 [theme]
-base="dark"
-backgroundColor="#0E1117"
-secondaryBackgroundColor="#1E1E1E"
-textColor="#FFFFFF"
-sidebarBackgroundColor="#000000"
+base = "dark"
+primaryColor = "#FF4B4B"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#1E1E1E"
+textColor = "#FFFFFF"
 
 [global]
 showWarningOnDirectExecution = false
