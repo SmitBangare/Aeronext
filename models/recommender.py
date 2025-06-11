@@ -1,25 +1,31 @@
 """
 Collaborative filtering recommendation engine for personalized retail offers.
-Uses Surprise library for matrix factorization and similarity-based recommendations.
+Uses sklearn-based matrix factorization and similarity-based recommendations.
 """
 
 import pandas as pd
 import numpy as np
-from surprise import Dataset, Reader, SVD, KNNBasic
-from surprise.model_selection import train_test_split
-from surprise import accuracy
 import pickle
 import os
 from collections import defaultdict
+from sklearn.decomposition import NMF
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler
+import sys
+
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config.airport_profiles import AIRPORT_PROFILES
 
 class AirportRecommender:
     def __init__(self):
         self.model = None
-        self.knn_model = None
-        self.trainset = None
-        self.testset = None
-        self.products_df = None
         self.user_item_matrix = None
+        self.products_df = None
+        self.scaler = MinMaxScaler()
+        self.item_similarity = None
+        self.n_components = 10
         
     def load_data(self):
         """Load transaction and product data"""
