@@ -1,9 +1,9 @@
 pip>=24.0
 setuptools>=65.5.1
 wheel>=0.38.0
-streamlit==1.32.0
-numpy==1.26.4
-pandas==2.2.3
+streamlit==1.33.0
+numpy==2.3.0
+pandas==2.3.0
 plotly==5.18.0
 scikit-learn==1.4.0
 --only-binary :all:
