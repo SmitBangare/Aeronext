@@ -1,0 +1,6 @@
+feedback_id,passenger_id,airport_code,feedback_text,sentiment_score,nps_score,category,timestamp,channel
+FB_001,DEL_001,DEL,"Excellent shopping experience! The personalized offers were very relevant and the digital signage helped me navigate easily.",0.8,9,promoter,2024-01-15 15:30:00,app
+FB_002,DEL_002,DEL,"Long queues at security and limited food options. App was helpful but could be improved.",0.2,6,passive,2024-01-15 16:00:00,survey
+FB_003,DEL_003,DEL,"Outstanding service and great variety of shops. The lounge recommendations were spot on!",-0.1,8,promoter,2024-01-15 16:30:00,app
+FB_004,JAI_001,JAI,"Nice airport but limited shopping options. Food court was good though.",0.3,7,passive,2024-01-15 13:00:00,survey
+FB_005,JAI_002,JAI,"Quick and efficient. Could use more retail options but overall satisfied.",0.4,7,passive,2024-01-15 14:00:00,app
