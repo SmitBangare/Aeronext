@@ -247,20 +247,17 @@ def render_recommendation_tab():
     with perf_col2:
         st.markdown("**Recommendation Distribution by Category**")
         
-        # Simulate category distribution
-        if 'recommendations' in locals() and recommendations:
+        # Category distribution from recommendations
+        if recommendations:
             category_counts = {}
             for rec in recommendations:
-                product_info = products_df[products_df['product_id'] == rec['product_id']]
-                if not product_info.empty:
-                    category = product_info.iloc[0]['category']
-                    category_counts[category] = category_counts.get(category, 0) + 1
+                domain = rec.get('domain', 'general')
+                category_counts[domain] = category_counts.get(domain, 0) + 1
         else:
             category_counts = {
-                'Food & Beverage': 2,
-                'Electronics & Gadgets': 1,
-                'Fashion & Accessories': 1,
-                'Souvenirs & Gifts': 1
+                'retail': 2,
+                'f&b': 2,
+                'lounge': 1
             }
         
         fig_cat = px.pie(
