@@ -22,7 +22,7 @@ from utils.plot_utils import create_recommendation_chart
 def render_recommendation_tab():
     """Render the AI recommendations tab"""
     
-    st.header("🧠 AI-Powered Retail Personalization")
+    st.header("AI-Powered Retail Personalization")
     st.markdown("""
     Generate personalized product recommendations using collaborative filtering 
     based on passenger segments, purchase history, and real-time context.
@@ -45,18 +45,18 @@ def render_recommendation_tab():
     recommender = load_recommender()
     
     # Input section
-    st.subheader("🎯 Passenger Context")
+    st.subheader("Passenger Context")
     
     # Domain selection first
     st.markdown("**Select Domain**")
     domain_col1, domain_col2, domain_col3 = st.columns(3)
     
     with domain_col1:
-        retail_selected = st.button("🛍️ Retail", use_container_width=True)
+        retail_selected = st.button("Retail", use_container_width=True)
     with domain_col2:
-        fnb_selected = st.button("🍽️ Food & Beverage", use_container_width=True)
+        fnb_selected = st.button("Food & Beverage", use_container_width=True)
     with domain_col3:
-        lounge_selected = st.button("🏢 Lounge Services", use_container_width=True)
+        lounge_selected = st.button("Lounge Services", use_container_width=True)
     
     # Set default domain or use selected
     if 'selected_domain' not in st.session_state:
@@ -116,7 +116,7 @@ def render_recommendation_tab():
         is_frequent_flyer = st.checkbox("Frequent Flyer", value=False)
     
     # Generate recommendations button
-    if st.button("🚀 Generate Recommendations", type="primary", key="generate_recs"):
+    if st.button("Generate Recommendations", type="primary", key="generate_recs"):
         
         # Simulate passenger ID
         passenger_id = f"SIM_{selected_airport}_{passenger_segment[:3].upper()}_{int(datetime.now().timestamp()) % 10000}"
@@ -144,7 +144,7 @@ def render_recommendation_tab():
     recommendations = st.session_state.get('recommendations', [])
     
     # Display recommendations
-    st.subheader("💎 Personalized Recommendations")
+    st.subheader("Personalized Recommendations")
     
     if recommendations:
         for i, rec in enumerate(recommendations):
@@ -153,9 +153,9 @@ def render_recommendation_tab():
                 col1, col2, col3 = st.columns([1, 2, 1])
                 
                 with col1:
-                    domain_emoji = {'retail': '🛍️', 'f&b': '🍽️', 'lounge': '🏢'}
+                    domain_emoji = {'retail': '', 'f&b': '', 'lounge': ''}
                     domain = rec.get('domain', 'general')
-                    st.markdown(f"### {domain_emoji.get(domain, '📦')} {domain.upper()}")
+                    st.markdown(f"### {domain.upper()}")
                     st.metric("Rating", f"{rec['predicted_rating']:.1f}/5.0")
                     st.metric("Match", f"{rec['confidence']:.0%}")
                 
@@ -164,7 +164,7 @@ def render_recommendation_tab():
                     st.markdown(f"### {product_name}")
                     
                     if rec.get('discount'):
-                        st.markdown(f"**🎯 Offer:** {rec['discount']}")
+                        st.markdown(f"**Offer:** {rec['discount']}")
                     if rec.get('brand'):
                         st.markdown(f"**Brand:** {rec['brand']}")
                     if rec.get('restaurant'):
@@ -179,7 +179,7 @@ def render_recommendation_tab():
                     st.button(f"Add to Cart", key=f"cart_{rec['product_id']}")
         
         # Impact metrics
-        st.subheader("📊 Expected Impact")
+        st.subheader("Expected Impact")
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -212,7 +212,7 @@ def render_recommendation_tab():
     
     # Model performance section
     st.markdown("---")
-    st.subheader("🔬 Model Performance & Insights")
+    st.subheader("Model Performance & Insights")
     
     perf_col1, perf_col2 = st.columns(2)
     
@@ -269,7 +269,7 @@ def render_recommendation_tab():
         st.plotly_chart(fig_cat, use_container_width=True)
     
     # Business insights
-    st.subheader("💡 Business Insights")
+    st.subheader("Business Insights")
     
     insights_text = f"""
     **For {selected_airport} - {passenger_segment.title()} Travelers:**

@@ -22,7 +22,7 @@ from utils.plot_utils import create_nps_gauge, create_sentiment_trend_chart
 def render_sentiment_tab():
     """Render the sentiment analysis and NPS tab"""
     
-    st.header("💬 Sentiment Analysis & NPS Tracking")
+    st.header("Sentiment Analysis & NPS Tracking")
     st.markdown("""
     Real-time passenger feedback analysis using NLP to track sentiment trends 
     and calculate Net Promoter Scores for continuous experience improvement.
@@ -54,7 +54,7 @@ def render_sentiment_tab():
     feedback_df = load_feedback_data()
     
     # Current NPS Overview
-    st.subheader("📊 Current NPS Overview")
+    st.subheader("Current NPS Overview")
     
     if not feedback_df.empty:
         # Calculate current NPS
@@ -101,7 +101,7 @@ def render_sentiment_tab():
         st.plotly_chart(nps_gauge, use_container_width=True)
         
         # NPS Distribution
-        st.subheader("📈 NPS Distribution")
+        st.subheader("NPS Distribution")
         
         distribution_data = {
             'Category': ['Promoters (9-10)', 'Passives (7-8)', 'Detractors (0-6)'],
@@ -139,7 +139,7 @@ def render_sentiment_tab():
     st.markdown("---")
     
     # Real-time Feedback Analysis
-    st.subheader("🔍 Real-time Feedback Analysis")
+    st.subheader("Real-time Feedback Analysis")
     
     # Text input for new feedback
     col1, col2 = st.columns([3, 1])
@@ -153,9 +153,9 @@ def render_sentiment_tab():
     
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)  # Add some spacing
-        analyze_button = st.button("🔬 Analyze Sentiment", type="primary")
+        analyze_button = st.button("Analyze Sentiment", type="primary")
         
-        simulate_feedback = st.button("🎲 Generate Sample", help="Generate sample feedback for testing")
+        simulate_feedback = st.button("Generate Sample", help="Generate sample feedback for testing")
     
     if simulate_feedback:
         from simulation.feedback_simulator import FeedbackSimulator
@@ -194,7 +194,7 @@ def render_sentiment_tab():
             
             # Aspect Analysis
             if aspect_analysis:
-                st.subheader("🎯 Aspect-wise Analysis")
+                st.subheader("Aspect-wise Analysis")
                 
                 aspect_data = []
                 for aspect, data in aspect_analysis.items():
@@ -226,7 +226,7 @@ def render_sentiment_tab():
     # Sentiment Trends Analysis
     if not feedback_df.empty:
         st.markdown("---")
-        st.subheader("📈 Sentiment Trends Analysis")
+        st.subheader("Sentiment Trends Analysis")
         
         # Ensure timestamp column exists and convert
         if 'timestamp' not in feedback_df.columns:
@@ -283,7 +283,7 @@ def render_sentiment_tab():
         
         # Common themes
         if 'common_themes' in trends and trends['common_themes']:
-            st.subheader("🏷️ Common Themes")
+            st.subheader("Common Themes")
             
             themes_data = pd.DataFrame([
                 {'Theme': theme, 'Frequency': freq}
@@ -304,7 +304,7 @@ def render_sentiment_tab():
     
     # Actionable Insights
     st.markdown("---")
-    st.subheader("💡 Actionable Insights & Recommendations")
+    st.subheader("Actionable Insights & Recommendations")
     
     if not feedback_df.empty:
         # Generate insights
@@ -314,28 +314,28 @@ def render_sentiment_tab():
         insight_col1, insight_col2 = st.columns(2)
         
         with insight_col1:
-            st.markdown("**📊 Summary Statistics**")
+            st.markdown("**Summary Statistics**")
             if insights['summary']:
                 st.write(f"• Average Sentiment: {insights['summary']['average_sentiment']:.3f}")
                 st.write(f"• Total Feedback Analyzed: {insights['summary']['total_feedback']:,}")
                 st.write(f"• Sentiment Variability: {insights['summary']['sentiment_std']:.3f}")
             
             if insights['sentiment_distribution']:
-                st.markdown("**🎭 Sentiment Distribution**")
+                st.markdown("**Sentiment Distribution**")
                 total = sum(insights['sentiment_distribution'].values())
                 for sentiment, count in insights['sentiment_distribution'].items():
                     percentage = (count / total) * 100 if total > 0 else 0
                     st.write(f"• {sentiment.title()}: {count} ({percentage:.1f}%)")
         
         with insight_col2:
-            st.markdown("**⚠️ Priority Areas for Improvement**")
+            st.markdown("**Priority Areas for Improvement**")
             if insights['priority_areas']:
                 for area in insights['priority_areas'][:5]:
                     st.write(f"• **{area['aspect'].replace('_', ' ').title()}**: {area['score']:.3f} ({area['mentions']} mentions)")
             else:
                 st.write("No critical areas identified - good performance!")
             
-            st.markdown("**🎯 Recommended Actions**")
+            st.markdown("**Recommended Actions**")
             if insights['recommendations']:
                 for rec in insights['recommendations']:
                     st.write(f"• {rec}")
@@ -355,7 +355,7 @@ def render_sentiment_tab():
     
     # NPS Prediction
     st.markdown("---")
-    st.subheader("🔮 NPS Trend Prediction")
+    st.subheader("NPS Trend Prediction")
     
     if not feedback_df.empty and 'daily_sentiment' in trends:
         # Predict NPS trend
@@ -406,7 +406,7 @@ def render_sentiment_tab():
     
     # Feedback Collection Tools
     st.markdown("---")
-    st.subheader("📝 Feedback Collection & Management")
+    st.subheader("Feedback Collection & Management")
     
     collection_col1, collection_col2 = st.columns(2)
     
@@ -433,7 +433,7 @@ def render_sentiment_tab():
             st.write(f"• **{metric}**: {value}")
     
     # Export functionality
-    if st.button("📥 Export Sentiment Analysis Report"):
+    if st.button("Export Sentiment Analysis Report"):
         if not feedback_df.empty:
             # Create comprehensive report
             report_data = []
