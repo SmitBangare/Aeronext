@@ -22,7 +22,7 @@ from utils.plot_utils import create_pricing_chart
 def render_pricing_tab():
     """Render the dynamic pricing tab"""
     
-    st.header("💸 Dynamic Pricing Engine")
+    st.header("Dynamic Pricing Engine")
     st.markdown("""
     AI-powered pricing optimization using Q-learning to maximize revenue 
     based on demand patterns, crowd levels, and real-time market conditions.
@@ -45,7 +45,7 @@ def render_pricing_tab():
     pricing_agent = load_pricing_agent()
     
     # Product selection and pricing inputs
-    st.subheader("🎯 Pricing Configuration")
+    st.subheader("Pricing Configuration")
     
     # Load products
     try:
@@ -89,7 +89,7 @@ def render_pricing_tab():
         )
     
     # Market conditions
-    st.subheader("📊 Market Conditions")
+    st.subheader("Market Conditions")
     
     cond_col1, cond_col2, cond_col3 = st.columns(3)
     
@@ -117,9 +117,9 @@ def render_pricing_tab():
         )
     
     # Real-time pricing recommendation
-    st.subheader("🚀 Pricing Recommendation")
+    st.subheader("Pricing Recommendation")
     
-    if st.button("💡 Get Pricing Recommendation", type="primary"):
+    if st.button("Get Pricing Recommendation", type="primary"):
         
         with st.spinner("Analyzing market conditions and calculating optimal price..."):
             
@@ -161,7 +161,7 @@ def render_pricing_tab():
                 )
             
             # Reasoning
-            st.markdown("**🧠 AI Reasoning:**")
+            st.markdown("**AI Reasoning:**")
             
             reasoning_text = f"""
             Based on current market conditions:
@@ -189,7 +189,7 @@ def render_pricing_tab():
     
     # 24-hour pricing simulation
     st.markdown("---")
-    st.subheader("📈 24-Hour Pricing Simulation")
+    st.subheader("24-Hour Pricing Simulation")
     
     sim_category = st.selectbox(
         "Simulation Category",
@@ -206,7 +206,7 @@ def render_pricing_tab():
         key="sim_base_price"
     )
     
-    if st.button("🎯 Run 24h Simulation"):
+    if st.button("Run 24h Simulation"):
         
         with st.spinner("Running 24-hour pricing simulation..."):
             
@@ -300,7 +300,7 @@ def render_pricing_tab():
             st.plotly_chart(fig_pricing, use_container_width=True)
             
             # Detailed simulation table
-            with st.expander("📋 Detailed Simulation Results"):
+            with st.expander("Detailed Simulation Results"):
                 display_cols = ['hour', 'time_period', 'demand_level', 'crowd_level', 
                               'base_price', 'adjusted_price', 'price_adjustment', 
                               'expected_sales', 'actual_sales', 'revenue']
@@ -308,7 +308,7 @@ def render_pricing_tab():
     
     # Pricing insights and analytics
     st.markdown("---")
-    st.subheader("📊 Pricing Analytics")
+    st.subheader("Pricing Analytics")
     
     analytics_col1, analytics_col2 = st.columns(2)
     
@@ -372,9 +372,9 @@ def render_pricing_tab():
         st.plotly_chart(fig_heatmap, use_container_width=True)
     
     # Business rules and constraints
-    st.subheader("⚙️ Business Rules & Constraints")
+    st.subheader("Business Rules & Constraints")
     
-    with st.expander("📋 Pricing Rules Configuration"):
+    with st.expander("Pricing Rules Configuration"):
         rules_col1, rules_col2 = st.columns(2)
         
         with rules_col1:
@@ -396,11 +396,11 @@ def render_pricing_tab():
                 default=['Fashion & Accessories']
             )
         
-        if st.button("💾 Update Pricing Rules"):
+        if st.button("Update Pricing Rules"):
             st.success("Pricing rules updated successfully!")
     
     # Performance metrics
-    st.subheader("📈 Performance Metrics")
+    st.subheader("Performance Metrics")
     
     # Simulate performance data
     performance_data = {
@@ -421,7 +421,7 @@ def render_pricing_tab():
         )
     
     # Actionable insights
-    st.subheader("💡 Actionable Insights")
+    st.subheader("Actionable Insights")
     
     insights = f"""
     **For {selected_airport} - {sim_category}:**
@@ -445,7 +445,7 @@ def render_pricing_tab():
     st.info(insights)
     
     # Export pricing strategy
-    if st.button("📥 Export Pricing Strategy"):
+    if st.button("Export Pricing Strategy"):
         if 'simulation_results' in locals():
             csv = simulation_results.to_csv(index=False)
             st.download_button(

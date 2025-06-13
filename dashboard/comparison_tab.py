@@ -25,7 +25,7 @@ from utils.kpi_calculator import KPICalculator
 def render_comparison_tab():
     """Render the DEL vs JAI comparison tab"""
     
-    st.header("⚖️ DEL vs JAI Airport Comparison")
+    st.header("DEL vs JAI Airport Comparison")
     st.markdown("""
     Comprehensive comparison of AI implementation impact between Delhi (Tier-1) 
     and Jaipur (Tier-2) airports, highlighting scalability and performance differences.
@@ -36,38 +36,36 @@ def render_comparison_tab():
     jai_profile = AIRPORT_PROFILES['JAI']
     
     # Header comparison cards
-    st.subheader("🏢 Airport Profiles Overview")
+    st.subheader("Airport Profiles Overview")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown(f"""
         <div style='background: linear-gradient(135deg, #1f77b4, #89CDF1); padding: 20px; border-radius: 10px; color: white;'>
-            <h3>🛫 Delhi (DEL)</h3>
-            <p><strong>Tier-1 Gateway</strong></p>
-            <p>📊 {del_profile['passenger_volume']:,} passengers/year</p>
-            <p>🏪 {del_profile['retail_density']} shops/1000 pax</p>
-            <p>💼 {del_profile['business_segment']:.0%} business travelers</p>
-            <p>🚀 {del_profile['tech_readiness']} tech readiness</p>
+            <h3>Delhi (DEL)</h3>
+            <p>{del_profile['passenger_volume']:,} passengers/year</p>
+            <p>{del_profile['retail_density']} shops/1000 pax</p>
+            <p>{del_profile['business_segment']:.0%} business travelers</p>
+            <p>{del_profile['tech_readiness']} tech readiness</p>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown(f"""
         <div style='background: linear-gradient(135deg, #ff7f0e, #FFB84D); padding: 20px; border-radius: 10px; color: white;'>
-            <h3>🛫 Jaipur (JAI)</h3>
-            <p><strong>Tier-2 Regional Hub</strong></p>
-            <p>📊 {jai_profile['passenger_volume']:,} passengers/year</p>
-            <p>🏪 {jai_profile['retail_density']} shops/1000 pax</p>
-            <p>🏖️ {jai_profile['leisure_segment']:.0%} leisure travelers</p>
-            <p>📈 {jai_profile['tech_readiness']} tech readiness</p>
+            <h3>Jaipur (JAI)</h3>
+            <p>{jai_profile['passenger_volume']:,} passengers/year</p>
+            <p>{jai_profile['retail_density']} shops/1000 pax</p>
+            <p>{jai_profile['leisure_segment']:.0%} leisure travelers</p>
+            <p>{jai_profile['tech_readiness']} tech readiness</p>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("---")
     
     # KPI Comparison Matrix
-    st.subheader("📊 Key Performance Indicators Comparison")
+    st.subheader("Key Performance Indicators Comparison")
     
     # Create comparison data
     comparison_data = {
@@ -120,7 +118,7 @@ def render_comparison_tab():
     st.dataframe(comparison_df, use_container_width=True)
     
     # Visual KPI Comparison
-    st.subheader("📈 Visual KPI Comparison")
+    st.subheader("Visual KPI Comparison")
     
     # Revenue comparison
     fig_revenue = go.Figure()
@@ -204,8 +202,8 @@ def render_comparison_tab():
     
     st.markdown("---")
     
-    # AI Model Performance Comparison
-    st.subheader("🧠 AI Model Performance Analysis")
+    # AI Model Performance Analysis
+    st.subheader("AI Model Performance Analysis")
     
     # Initialize models for comparison
     @st.cache_resource
@@ -227,7 +225,7 @@ def render_comparison_tab():
     model_col1, model_col2, model_col3 = st.columns(3)
     
     with model_col1:
-        st.markdown("**🎯 Recommendation Engine**")
+        st.markdown("**Recommendation Engine**")
         
         # Simulate performance for both airports
         del_rec_performance = {
@@ -253,9 +251,9 @@ def render_comparison_tab():
             
             # Show which is better
             if del_val > jai_val:
-                st.write("🏆 DEL performs better")
+                st.write("DEL performs better")
             else:
-                st.write("🏆 JAI performs better")
+                st.write("JAI performs better")
             st.write("---")
     
     with model_col2:
@@ -281,9 +279,9 @@ def render_comparison_tab():
             st.write(f"DEL: {del_val:.1f} | JAI: {jai_val:.1f}")
             
             if del_val > jai_val:
-                st.write("🏆 DEL performs better")
+                st.write("DEL performs better")
             else:
-                st.write("🏆 JAI performs better")
+                st.write("JAI performs better")
             st.write("---")
     
     with model_col3:
@@ -326,14 +324,14 @@ def render_comparison_tab():
             st.write(f"DEL: {del_val:.1f} | JAI: {jai_val:.1f}")
             
             if del_val > jai_val:
-                st.write("🏆 DEL performs better")
+                st.write("DEL performs better")
             else:
-                st.write("🏆 JAI performs better")
+                st.write("JAI performs better")
             st.write("---")
     
     # Implementation Complexity & ROI Analysis
     st.markdown("---")
-    st.subheader("💼 Implementation Analysis")
+    st.subheader("Implementation Analysis")
     
     impl_col1, impl_col2 = st.columns(2)
     
@@ -396,7 +394,7 @@ def render_comparison_tab():
     
     # Scalability Insights
     st.markdown("---")
-    st.subheader("🚀 Scalability & Strategic Insights")
+    st.subheader("Scalability & Strategic Insights")
     
     insights_col1, insights_col2 = st.columns(2)
     
@@ -452,7 +450,7 @@ def render_comparison_tab():
     
     # Strategic Recommendations
     st.markdown("---")
-    st.subheader("🎯 Strategic Recommendations")
+    st.subheader("Strategic Recommendations")
     
     recommendations = """
     **🏆 Overall Strategy:**
@@ -485,7 +483,7 @@ def render_comparison_tab():
     st.markdown(recommendations)
     
     # Comparative Timeline
-    st.subheader("📅 Implementation Timeline Comparison")
+    st.subheader("Implementation Timeline Comparison")
     
     timeline_data = {
         'Phase': ['Setup', 'Testing', 'Pilot Launch', 'Full Deployment', 'Optimization'],

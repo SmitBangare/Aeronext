@@ -29,7 +29,7 @@ def render_overview_tab():
     # Header section
     st.markdown(f"""
     <div style='background: linear-gradient(90deg, #1f77b4, #ff7f0e); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
-        <h2 style='color: white; margin: 0;'>🛫 {airport_profile['name']} ({selected_airport})</h2>
+        <h2 style='color: white; margin: 0;'>{airport_profile['name']} ({selected_airport})</h2>
         <p style='color: white; margin: 10px 0 0 0; font-size: 1.1em;'>
             {airport_profile['passenger_volume']:,} passengers annually | 
             {airport_profile['tech_readiness']} technology readiness
@@ -75,7 +75,7 @@ def render_overview_tab():
     left_col, right_col = st.columns([1, 1])
     
     with left_col:
-        st.subheader("🎯 Pilot Objectives & Targets")
+        st.subheader("Pilot Objectives & Targets")
         
         # Revenue target progress
         current_revenue = airport_profile['baseline_revenue_per_pax']
@@ -142,7 +142,7 @@ def render_overview_tab():
             st.plotly_chart(fig, use_container_width=True)
     
     with right_col:
-        st.subheader("📊 Passenger Segment Distribution")
+        st.subheader("Passenger Segment Distribution")
         
         # Passenger segment pie chart
         segments = {
@@ -163,7 +163,7 @@ def render_overview_tab():
         fig_segments.update_layout(height=300)
         st.plotly_chart(fig_segments, use_container_width=True)
         
-        st.subheader("🏪 Retail Category Mix")
+        st.subheader("Retail Category Mix")
         
         # Retail categories bar chart
         categories = airport_profile['retail_categories']
@@ -186,13 +186,13 @@ def render_overview_tab():
     st.markdown("---")
     
     # Operational insights section
-    st.subheader("🔍 Operational Insights")
+    st.subheader("Operational Insights")
     
     insight_col1, insight_col2, insight_col3 = st.columns(3)
     
     with insight_col1:
         st.markdown("""
-        **🚀 Revenue Opportunity**
+        **Revenue Opportunity**
         - Current spend: ₹{:,}/passenger
         - Target uplift: {:,}%
         - Potential gain: ₹{:,.0f}/passenger
@@ -204,7 +204,7 @@ def render_overview_tab():
     
     with insight_col2:
         st.markdown("""
-        **👥 Experience Improvement**
+        **Experience Improvement**
         - Current NPS: {} points
         - Target improvement: +{} points
         - Satisfaction focus: Digital engagement
@@ -215,7 +215,7 @@ def render_overview_tab():
     
     with insight_col3:
         st.markdown("""
-        **⚡ Efficiency Gains**
+        **Efficiency Gains**
         - Dwell time variance: ±{} min
         - Target reduction: {}%
         - Technology: IoT sensors + AI
@@ -225,7 +225,7 @@ def render_overview_tab():
         ))
     
     # Commercial zones section
-    st.subheader("🏢 Commercial Zones")
+    st.subheader("Commercial Zones")
     
     zones_data = []
     for i, zone in enumerate(airport_profile['commercial_zones']):
@@ -244,7 +244,7 @@ def render_overview_tab():
     
     # Display zones in expandable format
     for _, zone in zones_df.iterrows():
-        with st.expander(f"📍 {zone['Zone']}"):
+        with st.expander(f"{zone['Zone']}"):
             zone_col1, zone_col2, zone_col3 = st.columns(3)
             with zone_col1:
                 st.metric("Space Utilization", f"{zone['Utilization (%)']}%")
@@ -254,7 +254,7 @@ def render_overview_tab():
                 st.metric("Primary Category", zone['Primary Category'])
     
     # Peak hours visualization
-    st.subheader("⏰ Peak Hours Analysis")
+    st.subheader("Peak Hours Analysis")
     
     peak_hours = airport_profile['peak_hours']
     hours_data = []
@@ -309,7 +309,7 @@ def render_overview_tab():
     
     # Success metrics summary
     st.markdown("---")
-    st.subheader("🎯 Success Metrics Summary")
+    st.subheader("Success Metrics Summary")
     
     metrics_data = [
         {"Metric": "Revenue Uplift", "Baseline": f"₹{current_revenue}", "Target": f"₹{target_revenue}", "Impact": f"+{((target_revenue/current_revenue - 1) * 100):.1f}%"},
